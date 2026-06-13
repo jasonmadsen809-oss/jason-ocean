@@ -11,7 +11,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // Build the payload for RunPod
+    // Build payload for RunPod
     const payload = {
       input: {
         prompt: prompt,
@@ -20,7 +20,7 @@ export async function POST(req: Request) {
 
     // Call RunPod endpoint
     const runpodRes = await fetch(
-      `https://api.runpod.ai/v2/abcd1234efgh5678/run,
+      `https://api.runpod.ai/v2/y4x8ciheigk9fm/run`,
       {
         method: "POST",
         headers: {

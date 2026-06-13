@@ -1,57 +1,7 @@
 import { NextResponse } from "next/server";
 
-export async function POST(req: Request) {
-  const body = await req.json();
-  const prompt = body.prompt;
-  if (!prompt) {
-    return Response.json({ error: "Missing prompt" }, { status: 400 });
-  }
-
-    // Build payload for RunPod
-    const payload = {
-      input: {
-        prompt: prompt,
-      },
-    };
-
-    // Call RunPod endpoint
-    const runpodRes = await fetch(
-      `https://api.runpod.ai/v2/y4x8ciheigk9fm/run`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.RUNPOD_API_KEY}`,
-        },
-        body: JSON.stringify(payload),
-      }
-    );
-
-    const json = await runpodRes.json();
-
-    if (!runpodRes.ok) {
-      return NextResponse.json(
-        { error: json },
-        { status: 500 }
-      );
-    }
-
-    // Extract output from RunPod response
-    const output =
-      json.output?.text ||
-      json.output ||
-      "No output returned from RunPod";
-
-    return NextResponse.json({ output });
-  } catch (err: any) {
-    return NextResponse.json(
-      { error: err.message },
-      { status: 500 }
-    );
-  }
-}
 const systemPrompt = `
-You are a multi‑mode AI. Follow the mode rules:
+You are a multi-mode AI. Follow the mode rules:
 
 MODE: jason
 - Logical, analytical, structured, calm.
@@ -84,8 +34,58 @@ MODE: ultra
 - Combine ALL modes at once: logic + emotion + chaos + humor + intensity.
 `;
 
-const payload = {
-  input: {
-    prompt: `${systemPrompt}\n\nUSER: ${prompt}\nMODE: ${mode}`,
-  },
-};
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+    const { prompt, mode = "jason" } = body;
+
+    if (!prompt) {
+      return NextResponse.json({ error: "Missing prompt" }, { status: 400 });
+    }
+
+    const fullPrompt = `${systemPrompt}\n\nUSER: ${prompt}\nMODE: ${mode}`;
+
+    const payload = {
+      input: {
+        prompt: fullPrompt,
+        max_tokens: 512,
+        temperature: 0.7,
+        top_p: 0.9
+      },
+    };
+
+    const runpodRes = await fetch(
+      `https://api.runpod.ai/v2/y4x8ciheigk9fm/runsync`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.RUNPOD_API_KEY}`,
+        },
+        body: JSON.stringify(payload),
+      }
+    );
+
+    const json = await runpodRes.json();
+
+    if (!runpodRes.ok) {
+      return NextResponse.json(
+        { error: json },
+        { status: runpodRes.status || 500 }
+      );
+    }
+
+    const output =
+      json.output?.text ||
+      json.output?.choices?.[0]?.text ||
+      json.output ||
+      "No output returned from RunPod";
+
+    return NextResponse.json({ output: String(output).trim() });
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: err.message || "Internal server error" },
+      { status: 500 }
+    );
+  }
+}

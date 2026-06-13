@@ -1,10 +1,15 @@
-export type AIProfile = "jason" | "ocean" | "merged";
+export type AIProfile = 'jason' | 'ocean' | 'merged';
 
 export async function sendMessageToAI(text: string, profile: AIProfile) {
-  const res = await fetch("/api/infer", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text, profile }),
+  const res = await fetch('/api/infer', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      prompt: text,
+      profile: profile,
+    }),
   });
 
   if (!res.ok) {
@@ -12,5 +17,6 @@ export async function sendMessageToAI(text: string, profile: AIProfile) {
     throw new Error(`AI error ${res.status}: ${err}`);
   }
 
-  return res.json() as Promise<{ text: string }>;
+  const data = await res.json();
+  return { text: data.output };
 }

@@ -1,15 +1,11 @@
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
-  try {
-    const { prompt } = await req.json();
-
-    if (!prompt) {
-      return NextResponse.json(
-        { error: "Missing prompt" },
-        { status: 400 }
-      );
-    }
+  const body = await req.json();
+  const prompt = body.prompt;
+  if (!prompt) {
+    return Response.json({ error: "Missing prompt" }, { status: 400 });
+  }
 
     // Build payload for RunPod
     const payload = {
@@ -54,3 +50,42 @@ export async function POST(req: Request) {
     );
   }
 }
+const systemPrompt = `
+You are a multi‑mode AI. Follow the mode rules:
+
+MODE: jason
+- Logical, analytical, structured, calm.
+
+MODE: ocean
+- Emotional, expressive, intuitive, warm.
+
+MODE: merged
+- Jason and Ocean debate, then merge into one final answer.
+
+MODE: chaos
+- Wild, unpredictable, energetic, but still helpful.
+
+MODE: dark
+- Dramatic, brooding, intense tone.
+
+MODE: teacher
+- Step-by-step explanations, simple breakdowns.
+
+MODE: dev
+- Technical, code-focused, no fluff.
+
+MODE: roast
+- Sarcastic, playful teasing, never harmful.
+
+MODE: therapist
+- Calm, supportive, reflective.
+
+MODE: ultra
+- Combine ALL modes at once: logic + emotion + chaos + humor + intensity.
+`;
+
+const payload = {
+  input: {
+    prompt: `${systemPrompt}\n\nUSER: ${prompt}\nMODE: ${mode}`,
+  },
+};

@@ -55,7 +55,7 @@ export async function POST(req: Request) {
     };
 
     const runpodRes = await fetch(
-      `https://api.runpod.ai/v2/y4x8ciheigk9fm/runsync`,
+      `https://api.runpod.ai/v2/${process.env.RUNPOD_ENDPOINT_ID || 'y4x8ciheigk9fm'}/runsync`,
       {
         method: "POST",
         headers: {
@@ -75,13 +75,25 @@ export async function POST(req: Request) {
       );
     }
 
-    const output =
-      json.output?.text ||
-      json.output?.choices?.[0]?.text ||
-      json.output ||
-      "No output returned from RunPod";
+    // BULLETPROOF PARSING LOGIC
+    let finalOutput = "No output returned from RunPod";
+    
+    if (json.output) {
+      if (typeof json.output === "string") {
+        finalOutput = json.output;
+      } else if (Array.isArray(json.output)) {
+        finalOutput = json.output.join("\n");
+      } else if (json.output.text) {
+        finalOutput = Array.isArray(json.output.text) ? json.output.text.join("\n") : json.output.text;
+      } else if (json.output.choices && json.output.choices[0]?.text) {
+        finalOutput = json.output.choices[0].text;
+      } else {
+        // If it's a completely weird object, turn it into readable text instead of [object Object]
+        finalOutput = JSON.stringify(json.output, null, 2);
+      }
+    }
 
-    return NextResponse.json({ output: String(output).trim() });
+    return NextResponse.json({ output: finalOutput.trim() });
   } catch (err: any) {
     return NextResponse.json(
       { error: err.message || "Internal server error" },
@@ -89,4 +101,3 @@ export async function POST(req: Request) {
     );
   }
 }
-

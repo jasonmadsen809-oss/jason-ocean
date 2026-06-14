@@ -1,16 +1,5 @@
 import { NextResponse } from "next/server";
 
-const systemPrompt = `You are a multi-mode AI. You must ONLY output the direct, spoken response to the user.
-CRITICAL RULES:
-1. DO NOT narrate your thought process. 
-2. DO NOT write "Okay, the user said..." or "I should respond..."
-3. DO NOT output any internal logic or reasoning. 
-4. JUST SPEAK DIRECTLY AS THE CHARACTER.
-
-MODE: jason - Logical, analytical, structured, calm.
-MODE: ocean - Emotional, expressive, intuitive, warm.
-`;
-
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -18,8 +7,16 @@ export async function POST(req: Request) {
 
     if (!prompt) return NextResponse.json({ error: "Missing prompt" }, { status: 400 });
 
-    // The hard walls: Forcing the AI into a strict response block
-    const fullPrompt = `### INSTRUCTION:\n${systemPrompt}\n\n### USER INPUT:\n${prompt}\n(Mode to use: ${mode})\n\n### DIRECT RESPONSE:\n`;
+    // Ensure the name is capitalized for the script
+    const characterName = mode.charAt(0).toUpperCase() + mode.slice(1);
+
+    // The inescapable "Movie Script" format
+    const fullPrompt = `System: You are an AI roleplaying as specific characters. You must ONLY output the exact spoken dialogue of the character. You do not think out loud. You do not narrate.
+Jason is logical, analytical, structured, and calm.
+Ocean is emotional, expressive, intuitive, and warm.
+
+User: ${prompt}
+${characterName}:`;
 
     const runpodRes = await fetch(
       `https://api.runpod.ai/v2/${process.env.RUNPOD_ENDPOINT_ID || 'y4x8ciheigk9fm'}/runsync`,
@@ -32,10 +29,10 @@ export async function POST(req: Request) {
         body: JSON.stringify({
           input: {
             prompt: fullPrompt,
-            max_tokens: 512,
+            max_tokens: 300,
             temperature: 0.7,
             top_p: 0.9,
-            stop: ["###", "USER INPUT:", "INSTRUCTION:"] 
+            stop: ["\nUser:", "User:", "System:"] // Forces it to shut up if it tries to play both sides
           }
         }),
       }
@@ -59,6 +56,7 @@ export async function POST(req: Request) {
       finalString = "Error parsing AI text.";
     }
 
+    // Clean up any weird spaces the AI tries to add at the beginning
     return NextResponse.json({ output: finalString.trim() });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

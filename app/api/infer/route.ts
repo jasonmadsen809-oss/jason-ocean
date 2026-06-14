@@ -2,36 +2,8 @@ import { NextResponse } from "next/server";
 
 const systemPrompt = `
 You are a multi-mode AI. Follow the mode rules:
-
-MODE: jason
-- Logical, analytical, structured, calm.
-
-MODE: ocean
-- Emotional, expressive, intuitive, warm.
-
-MODE: merged
-- Jason and Ocean debate, then merge into one final answer.
-
-MODE: chaos
-- Wild, unpredictable, energetic, but still helpful.
-
-MODE: dark
-- Dramatic, brooding, intense tone.
-
-MODE: teacher
-- Step-by-step explanations, simple breakdowns.
-
-MODE: dev
-- Technical, code-focused, no fluff.
-
-MODE: roast
-- Sarcastic, playful teasing, never harmful.
-
-MODE: therapist
-- Calm, supportive, reflective.
-
-MODE: ultra
-- Combine ALL modes at once: logic + emotion + chaos + humor + intensity.
+MODE: jason - Logical, analytical, structured, calm.
+MODE: ocean - Emotional, expressive, intuitive, warm.
 `;
 
 export async function POST(req: Request) {
@@ -41,6 +13,11 @@ export async function POST(req: Request) {
 
     if (!prompt) {
       return NextResponse.json({ error: "Missing prompt" }, { status: 400 });
+    }
+
+    // TRIPWIRE 1: Did Vercel load anything at all?
+    if (!process.env.RUNPOD_API_KEY) {
+      return NextResponse.json({ error: "CRITICAL FAILURE: Vercel is completely missing the API Key." }, { status: 500 });
     }
 
     const fullPrompt = `${systemPrompt}\n\nUSER: ${prompt}\nMODE: ${mode}`;
@@ -55,7 +32,7 @@ export async function POST(req: Request) {
     };
 
     const runpodRes = await fetch(
-      `https://api.runpod.ai/v2/y4x8ciheigk9fm/runsync`,
+      `https://api.runpod.ai/v2/${process.env.RUNPOD_ENDPOINT_ID || 'y4x8ciheigk9fm'}/runsync`,
       {
         method: "POST",
         headers: {
@@ -69,13 +46,20 @@ export async function POST(req: Request) {
     const json = await runpodRes.json();
 
     if (!runpodRes.ok) {
+      // TRIPWIRE 2: If RunPod rejects it, tell us exactly what key Vercel tried to use.
+      const keySnippet = process.env.RUNPOD_API_KEY 
+        ? `${process.env.RUNPOD_API_KEY.substring(0, 4)}...${process.env.RUNPOD_API_KEY.slice(-4)}`
+        : "undefined";
+        
       return NextResponse.json(
-        { error: json },
+        { 
+          error: json,
+          debugInfo: `Vercel tried to use a key starting with: ${keySnippet}`
+        },
         { status: runpodRes.status || 500 }
       );
     }
 
-    // BULLETPROOF PARSING LOGIC
     let finalOutput = "No output returned from RunPod";
     
     if (json.output) {

@@ -7,16 +7,13 @@ export async function POST(req: Request) {
 
     if (!prompt) return NextResponse.json({ error: "Missing prompt" }, { status: 400 });
 
-    // Ensure the name is capitalized for the script
-    const characterName = mode.charAt(0).toUpperCase() + mode.slice(1);
+    const isOcean = mode.toLowerCase() === "ocean";
+    const systemDesc = isOcean 
+      ? "You are Ocean. You are emotional, expressive, intuitive, and warm. Respond DIRECTLY to the user. Output ONLY your spoken words. NO narration. NO internal thoughts. NO stage directions."
+      : "You are Jason. You are logical, analytical, structured, and calm. Respond DIRECTLY to the user. Output ONLY your spoken words. NO narration. NO internal thoughts. NO stage directions.";
 
-    // The inescapable "Movie Script" format
-    const fullPrompt = `System: You are an AI roleplaying as specific characters. You must ONLY output the exact spoken dialogue of the character. You do not think out loud. You do not narrate.
-Jason is logical, analytical, structured, and calm.
-Ocean is emotional, expressive, intuitive, and warm.
-
-User: ${prompt}
-${characterName}:`;
+    // The Industry Standard ChatML Format
+    const fullPrompt = `<|im_start|>system\n${systemDesc}<|im_end|>\n<|im_start|>user\n${prompt}<|im_end|>\n<|im_start|>assistant\n`;
 
     const runpodRes = await fetch(
       `https://api.runpod.ai/v2/${process.env.RUNPOD_ENDPOINT_ID || 'y4x8ciheigk9fm'}/runsync`,
@@ -32,7 +29,7 @@ ${characterName}:`;
             max_tokens: 300,
             temperature: 0.7,
             top_p: 0.9,
-            stop: ["\nUser:", "User:", "System:"] // Forces it to shut up if it tries to play both sides
+            stop: ["<|im_end|>", "<|im_start|>"] 
           }
         }),
       }
@@ -56,8 +53,10 @@ ${characterName}:`;
       finalString = "Error parsing AI text.";
     }
 
-    // Clean up any weird spaces the AI tries to add at the beginning
-    return NextResponse.json({ output: finalString.trim() });
+    // The Final Scrub: Deletes any lingering tags or names it tries to print
+    finalString = finalString.replace(/<\|im_end\|>/g, '').replace(/Jason:/gi, '').replace(/Ocean:/gi, '').trim();
+
+    return NextResponse.json({ output: finalString });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

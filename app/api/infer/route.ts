@@ -55,7 +55,7 @@ export async function POST(req: Request) {
     };
 
     const runpodRes = await fetch(
-      `https://api.runpod.ai/v2/${process.env.RUNPOD_ENDPOINT_ID || 'y4x8ciheigk9fm'}/runsync`,
+      `https://api.runpod.ai/v2/y4x8ciheigk9fm/runsync`,
       {
         method: "POST",
         headers: {
@@ -88,7 +88,7 @@ export async function POST(req: Request) {
       } else if (json.output.choices && json.output.choices[0]?.text) {
         finalOutput = json.output.choices[0].text;
       } else {
-        // If it's a completely weird object, turn it into readable text instead of [object Object]
+        // If it's a weird object, turn it into readable text instead of [object Object]
         finalOutput = JSON.stringify(json.output, null, 2);
       }
     }

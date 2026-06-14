@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 
-const systemPrompt = `
-You are a multi-mode AI. Follow the mode rules:
+const systemPrompt = `You are a multi-mode AI. You must ONLY output the direct, spoken response to the user.
+CRITICAL RULES:
+1. DO NOT narrate your thought process. 
+2. DO NOT write "Okay, the user said..." or "I should respond..."
+3. DO NOT output any internal logic or reasoning. 
+4. JUST SPEAK DIRECTLY AS THE CHARACTER.
+
 MODE: jason - Logical, analytical, structured, calm.
 MODE: ocean - Emotional, expressive, intuitive, warm.
 `;
@@ -13,7 +18,8 @@ export async function POST(req: Request) {
 
     if (!prompt) return NextResponse.json({ error: "Missing prompt" }, { status: 400 });
 
-    const fullPrompt = `${systemPrompt}\n\nUSER: ${prompt}\nMODE: ${mode}`;
+    // The hard walls: Forcing the AI into a strict response block
+    const fullPrompt = `### INSTRUCTION:\n${systemPrompt}\n\n### USER INPUT:\n${prompt}\n(Mode to use: ${mode})\n\n### DIRECT RESPONSE:\n`;
 
     const runpodRes = await fetch(
       `https://api.runpod.ai/v2/${process.env.RUNPOD_ENDPOINT_ID || 'y4x8ciheigk9fm'}/runsync`,
@@ -28,7 +34,8 @@ export async function POST(req: Request) {
             prompt: fullPrompt,
             max_tokens: 512,
             temperature: 0.7,
-            top_p: 0.9
+            top_p: 0.9,
+            stop: ["###", "USER INPUT:", "INSTRUCTION:"] 
           }
         }),
       }
@@ -42,7 +49,6 @@ export async function POST(req: Request) {
 
     let finalString = "No output returned";
     
-    // THE EXACT MAP TO RUNPOD'S TEXT (FORCED INTO A STRING)
     try {
       if (json.output && Array.isArray(json.output) && json.output[0]?.choices?.[0]?.tokens?.[0]) {
         finalString = String(json.output[0].choices[0].tokens[0]);
@@ -53,7 +59,7 @@ export async function POST(req: Request) {
       finalString = "Error parsing AI text.";
     }
 
-    return NextResponse.json({ output: finalString });
+    return NextResponse.json({ output: finalString.trim() });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

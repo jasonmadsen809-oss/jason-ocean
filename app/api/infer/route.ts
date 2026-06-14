@@ -88,7 +88,6 @@ export async function POST(req: Request) {
       } else if (json.output.choices && json.output.choices[0]?.text) {
         finalOutput = json.output.choices[0].text;
       } else {
-        // If it's a weird object, turn it into readable text instead of [object Object]
         finalOutput = JSON.stringify(json.output, null, 2);
       }
     }

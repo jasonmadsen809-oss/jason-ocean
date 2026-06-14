@@ -40,19 +40,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: json }, { status: runpodRes.status || 500 });
     }
 
-    let finalOutput = "No output returned";
+    let finalString = "No output returned";
     
-    // THE EXACT MAP TO RUNPOD'S TEXT
-    if (json.output) {
-      if (Array.isArray(json.output) && json.output[0]?.choices?.[0]?.tokens?.[0]) {
-        finalOutput = json.output[0].choices[0].tokens[0];
+    // THE EXACT MAP TO RUNPOD'S TEXT (FORCED INTO A STRING)
+    try {
+      if (json.output && Array.isArray(json.output) && json.output[0]?.choices?.[0]?.tokens?.[0]) {
+        finalString = String(json.output[0].choices[0].tokens[0]);
       } else {
-        // Absolute fallback so it never says [object Object]
-        finalOutput = JSON.stringify(json.output, null, 2);
+        finalString = JSON.stringify(json.output);
       }
+    } catch (e) {
+      finalString = "Error parsing AI text.";
     }
 
-    return NextResponse.json({ output: finalOutput.trim() });
+    return NextResponse.json({ output: finalString });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
